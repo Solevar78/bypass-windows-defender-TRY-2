@@ -1,5 +1,5 @@
-|RU| Это полностью рабочий код, который навсегда отключает windows defender, который можно запускать без прав администратора.(РАБОТАЕТ ТОЛЬКО НА WINDOWS 10)
+|RU| Это полностью рабочий код, который навсегда отключает windows defender, который можно запускать без прав администратора.(ФАЙЛ DefenderDisable.exe РАБОТАЕТ ТОЛЬКО НА WINDOWS 10, А Win11SmartDisable СООТВЕТСТВЕННО ТОЛЬКО НА WINDOWS 11)
 Автор НЕ НЕСЁТ НИКАКОЙ ОТВЕТСТВЕННОСТИ за любой ущерб, убытки или незаконные действия, возникшие в результате использования этого кода или файлов.
 
-|EN| This is a fully working code that permanently disables Windows Defender, which can be run without administrator rights. (WORKED ONLY FOR WINDOWS 10)
+|EN| This is a fully working code that permanently disables Windows Defender, which can be run without administrator rights. (FILE DefenderDisable.exe WORKED ONLY FOR WINDOWS 10 and accordingly Win11SmartDisable ONLY FOR WINDOWS 11)
 The author DOES NOT TAKE ANY LIABILITY for any damage, loss or illegal activity resulting from the use of this code or files.
