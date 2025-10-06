@@ -67,3 +67,6 @@ def open_gpedit_and_disable_defender():
 
 if __name__ == "__main__":
     open_gpedit_and_disable_defender()
+
+
+pyinstaller --onefile disable_defender_gpedit.py
