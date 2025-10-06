@@ -1,77 +1,123 @@
-from pywinauto import Application
+import os
+import subprocess
+import sys
+
+def install_pyinstaller():
+    try:
+        import PyInstaller
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+
+def create_gpo_opener():
+    gpo_code = '''import os
+import subprocess
 import time
+import ctypes
+import win32gui
+import win32con
+import win32api
+import pyautogui
 
-def open_gpedit_and_disable_defender():
-    # Запускаем редактор локальной групповой политики
-    app = Application(backend="uia").start("gpedit.msc")
-    time.sleep(3)  # ждем загрузки окна
-
-    dlg = app.window(title_re=".*Групповая политика.*")
-    dlg.wait('visible', timeout=10)
-
-    tree = dlg.child_window(control_type="Tree")
-
-    # Путь к нужному разделу
-    path = [
-        "Конфигурация компьютера",
-        "Административные шаблоны",
-        "Компоненты Windows",
-        "Антивирусная программа «Защитник Windows»"
-    ]
-
-    # Раскрываем каждую ветку
-    for i in range(len(path)):
-        node_path = "\" + "\".join(path[:i+1])
-        item = tree.get_item(node_path)
-        item.ensure_visible()
-        item.expand()
-        time.sleep(1)
-    # Раскрываем каждую ветку
-    for i in range(len(path)):
-        node_path = "\" + "\".join(path[:i+1])
-        item = tree.get_item(node_path)
-        item.ensure_visible()
-        item.expand()
-        time.sleep(1)
-
-    # Выбираем пункт "Выключить антивирусную программу „Защитник Windows“"
-    setting_name = "Выключить антивирусную программу „Защитник Windows“"
-    full_path = "\" + "\".join(path + [setting_name])
+def run_as_admin():
     try:
-        param_item = tree.get_item(full_path)
-        param_item.select()
-    except Exception as e:
-        print(f"Не удалось найти пункт настройки: {e}")
-        return
+        if ctypes.windll.shell32.IsUserAnAdmin():
+            return True
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+        return False
+    except:
+        return False
 
-    # Открываем окно настройки двойным кликом
-    param_item.double_click_input()
-    time.sleep(2)
+if not run_as_admin():
+    sys.exit()
 
-    # Окно настроек параметра
-    param_dialog = app.window(title_re=".*Выключить антивирусную программу.*")
-    param_dialog.wait('visible', timeout=5)
+time.sleep(1)
 
-    # Выбираем "Включено"
-    try:
-        enabled_radio = param_dialog.child_window(title="Включено", control_type="RadioButton")
-        enabled_radio.click_input()
-    except Exception as e:
-        print(f"Не удалось выбрать 'Включено': {e}")
-        return
+# Сначала устанавливаем настройку через реестр
+subprocess.run('reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f', shell=True)
 
-    # Подтверждаем
-    try:
-        ok_btn = param_dialog.child_window(title="OK", control_type="Button")
-        ok_btn.click_input()
-    except Exception as e:
-        print(f"Не удалось нажать OK: {e}")
-        return
+# Открываем редактор локальной групповой политики
+subprocess.run('gpedit.msc', shell=True)
+time.sleep(3)
 
-    print("Настройка успешно применена.")
+# Автоматизируем навигацию с помощью горячих клавиш
+def set_gpo_settings():
+    # Переходим по дереву групповых политик
+    pyautogui.hotkey('right')  # Разворачиваем первый узел
+    time.sleep(0.5)
+    
+    # Конфигурация компьютера
+    pyautogui.press('down')
+    time.sleep(0.5)
+    pyautogui.hotkey('right')
+    time.sleep(0.5)
+    
+    # Административные шаблоны
+    pyautogui.press('down')
+    time.sleep(0.5)
+    pyautogui.hotkey('right')
+    time.sleep(0.5)
+    
+    # Компоненты Windows
+    pyautogui.press('down')
+    time.sleep(0.5)
+    pyautogui.hotkey('right')
+    time.sleep(0.5)
+    
+    # Антивирусная программа «Защитник Windows»
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')
+    pyautogui.press('down')  # Прокручиваем до Защитника
+    time.sleep(0.5)
+    pyautogui.press('enter')  # Открываем раздел
+    time.sleep(1)
+    
+    # Ищем пункт «Выключить антивирусную программу „Защитник Windows“»
+    pyautogui.press('tab')  # Переходим к списку политик
+    time.sleep(0.5)
+    
+    # Прокручиваем до нужной политики
+    for i in range(10):
+        pyautogui.press('down')
+        time.sleep(0.1)
+    
+    # Открываем политику двойным кликом или Enter
+    pyautogui.press('enter')
+    time.sleep(1)
+    
+    # Выбираем «Включено»
+    pyautogui.press('down')
+    time.sleep(0.5)
+    pyautogui.press('down')  # Переходим на "Включено"
+    time.sleep(0.5)
+    
+    # Применяем настройку
+    pyautogui.press('enter')
+    time.sleep(1)
+    
+    # Закрываем редактор групповых политик
+    pyautogui.hotkey('alt', 'f4')
+
+try:
+    set_gpo_settings()
+    print("Group Policy settings configured successfully")
+except Exception as e:
+    print(f"Error: {e}")
+
+# Принудительно обновляем групповые политики
+subprocess.run('gpupdate /force', shell=True)
+print("Group policies updated")
+'''
+
+    with open('gpo_auto_config.py', 'w', encoding='utf-8') as f:
+        f.write(gpo_code)
+
+def compile_to_exe():
+    os.system('pyinstaller --onefile --noconsole --name "GPOAutoConfig" gpo_auto_config.py')
+    print("EXE создан: GPOAutoConfig.exe")
 
 if __name__ == "__main__":
-    open_gpedit_and_disable_defender()
-
-
-pyinstaller --onefile disable_defender_gpedit.py
+    install_pyinstaller()
+    create_gpo_opener()
+    compile_to_exe()
