@@ -26,6 +26,13 @@ def open_gpedit_and_disable_defender():
         item.ensure_visible()
         item.expand()
         time.sleep(1)
+    # Раскрываем каждую ветку
+    for i in range(len(path)):
+        node_path = "\" + "\".join(path[:i+1])
+        item = tree.get_item(node_path)
+        item.ensure_visible()
+        item.expand()
+        time.sleep(1)
 
     # Выбираем пункт "Выключить антивирусную программу „Защитник Windows“"
     setting_name = "Выключить антивирусную программу „Защитник Windows“"
@@ -36,8 +43,6 @@ def open_gpedit_and_disable_defender():
     except Exception as e:
         print(f"Не удалось найти пункт настройки: {e}")
         return
-
-    time.sleep(1)
 
     # Открываем окно настройки двойным кликом
     param_item.double_click_input()
