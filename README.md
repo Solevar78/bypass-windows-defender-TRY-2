@@ -3,7 +3,7 @@
 ФАЙЛ DefenderDisable.exe РАБОТАЕТ ТОЛЬКО НА WINDOWS 10, А Win11SmartDisable СООТВЕТСТВЕННО ТОЛЬКО НА WINDOWS 11
 
 Автор НЕ НЕСЁТ НИКАКОЙ ОТВЕТСТВЕННОСТИ за любой ущерб, убытки или незаконные действия, возникшие в результате использования этого кода или файлов.
-
+хуйня ебанная, нихуя не рабоатет + детектиться вд
 
 |EN| This is a fully working code that permanently disables Windows Defender, which can be run without administrator rights. 
 
